@@ -7,14 +7,14 @@ import { domain } from "../../domain";
 
 export async function getServerSideProps(context: any) {
   const userAgent = context.req.headers["user-agent"];
-  if (!userAgent?.includes("facebook")) {
+  /*if (!userAgent?.includes("facebook")) {
     return {
       redirect: {
         permanent: false,
         destination: domain + "/doc-bao/" + context.params.slug,
       },
     };
-  }
+  }*/
 
   const data = await fetchMeta(domain + "/doc-bao/" + context.params.slug);
   return {

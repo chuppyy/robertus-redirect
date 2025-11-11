@@ -15,28 +15,24 @@ export async function getServerSideProps(context: any) {
       },
     };
   }
-  const data = await fetchMeta(domain + "/" + context.params.slug.slice(1));
+      const slug = context.params?.slug;
+    const {data} = await fetch(`${process.env.APP_API}/News/news-detailbasic?id=${slug?.slice(slug?.lastIndexOf("-") + 1)}`).then((res) => res.json());
+
   return {
     props: data,
   };
 }
 
-export default function App({ url, title, description, icon, image }: any) {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(url);
-  }, []);
+export default function App({ name, avatarLink }: any) {
 
   return (
     <>
       <Head>       
-      <title>{title}</title>
-        <meta name="og:title" content={title} />
-        <meta name="og:description" content={description} />
-        <meta name="og:image" content={image} />
+      <title>{name}</title>
+        <meta name="og:title" content={name} />
+        <meta name="og:description" content={name} />
+        <meta name="og:image" content={avatarLink} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href={icon} />
       </Head>
     </>
   );
