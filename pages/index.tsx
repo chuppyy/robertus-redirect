@@ -1,34 +1,26 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
-
-// @ts-ignore
-import fetchMeta from "fetch-meta-tags";
 import Head from "next/head";
 import React from "react";
+import { GetStaticProps } from "next";
 import { domain } from "../domain";
 
-export async function getServerSideProps(context: any) {
-  const userAgent = context.req.headers["user-agent"];
-  if (userAgent?.includes("facebook")) {
-    return {
-      redirect: {
-        permanent: false,
-        destination: domain,
-      },
-    };
-  }
-  const data = await fetchMeta(domain);
+// ISR: Static generation with daily revalidation
+// Index page metadata rarely changes, so we cache for 24 hours
+export const getStaticProps: GetStaticProps = async () => {
+  // Return hardcoded metadata for your domain
+  // This avoids external fetch on every build
   return {
-    props: data,
+    props: {
+      url: domain,
+      title: "Top News US",
+      description: "Latest news and updates",
+      icon: "/favicon.ico",
+      image: `${domain}/og-image.png`,
+    },
+    revalidate: 86400, // Revalidate once per day (24 hours)
   };
-}
+};
 
-export default function Error({ url, title, description, icon, image }: any) {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(url);
-  }, []);
+export default function Home({ url, title, description, icon, image }: any) {
 
   return (
     <>
