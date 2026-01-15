@@ -2,60 +2,116 @@ import Head from "next/head";
 import React from "react";
 import { GetStaticProps, GetStaticPaths } from "next";
 
-// ISR: Pre-render pages at build time and revalidate every hour
-// This drastically reduces serverless function invocations
+// Helper function to fetch with timeout
+async function fetchWithTimeout(url: string, timeoutMs: number = 3000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// Helper function to fetch backup data from JSON file (R2 CDN)
+async function fetchBackupData(id: string): Promise<{ name: string; avatarLink: string } | null> {
+  try {
+    const backupUrl = `https://file.lifenews247.com/sportnews/backup/${id}.json`;
+    const response = await fetch(backupUrl);
+
+    if (!response.ok) {
+      console.error(`Backup fetch failed with status: ${response.status}`);
+      return null;
+    }
+
+    const backupData = await response.json();
+
+    return {
+      name: backupData.name || '',
+      avatarLink: backupData.avatarLink || '',
+    };
+  } catch (error) {
+    console.error('Error fetching backup data:', error);
+    return null;
+  }
+}
+
+// ISR: Pre-render pages at build time and cache
 export const getStaticPaths: GetStaticPaths = async () => {
-  // Return empty paths - pages will be generated on-demand (fallback: blocking)
   return {
     paths: [],
-    fallback: 'blocking', // Generate pages on first request, then cache
+    fallback: 'blocking',
   };
 };
 
+// Only Facebook crawlers reach here (regular users are redirected by next.config.js)
 export const getStaticProps: GetStaticProps = async (context) => {
+  const slug = context.params?.slug as string;
+
+  // Extract ID from slug (format: p-title-123)
+  const id = slug?.slice(slug?.lastIndexOf("-") + 1);
+
   try {
-    const slug = context.params?.slug as string;
-
-    // Extract ID from slug (format: p-title-123)
-    const id = slug?.slice(slug?.lastIndexOf("-") + 1);
-
-    const response = await fetch(
+    // 1. Try fetching from API with 3 second timeout
+    const response = await fetchWithTimeout(
       `${process.env.APP_API}/News/news-detailbasic?id=${id}`,
-      {
-        headers: {
-          'User-Agent': 'facebookexternalhit/1.1', // Pretend to be Facebook crawler
-        },
-      }
+      3000
     );
 
-    if (!response.ok) {
-      return { notFound: true };
+    if (response.ok) {
+      const { data } = await response.json();
+
+      // Check if data has valid name property
+      if (data && data.name && data.name.trim() !== '') {
+        return {
+          props: data,
+          revalidate: 86400, // Revalidate every 24 hours
+        };
+      }
     }
 
-    const { data } = await response.json();
+    // 2. API failed or no valid name, try backup JSON
+    console.log(`API did not return valid name for id: ${id}, trying backup...`);
 
-    return {
-      props: data || { name: '', avatarLink: '' },
-      revalidate: 36000, // Revalidate every 1 hour (3600 seconds)
-    };
   } catch (error) {
-    console.error('Error fetching news detail:', error);
+    // Timeout or network error
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log(`API timeout (3s) for id: ${id}, trying backup...`);
+    } else {
+      console.error('Error fetching from API:', error);
+    }
+  }
+
+  // 3. Fallback to backup JSON
+  const backupData = await fetchBackupData(id);
+
+  if (backupData && backupData.name && backupData.name.trim() !== '') {
     return {
-      props: { name: '', avatarLink: '' },
-      revalidate: 60, // Retry after 1 minute on error
+      props: backupData,
+      revalidate: 86400,
     };
   }
+
+  // Both API and backup failed
+  return {
+    props: { name: '', avatarLink: '' },
+    revalidate: 3600, // Retry after 1 hour
+  };
 };
 
 export default function App({ name, avatarLink }: any) {
-
   return (
     <>
       <Head>
         <title>{name}</title>
-        <meta name="og:title" content={name} />
-        <meta name="og:description" content={name} />
-        <meta name="og:image" content={avatarLink} />
+        <meta property="og:title" content={name} />
+        <meta property="og:description" content={name} />
+        <meta property="og:image" content={avatarLink} />
+        <meta property="og:type" content="article" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
     </>

@@ -31,8 +31,10 @@ export function middleware(request: NextRequest) {
 // Configure which routes should run through middleware
 export const config = {
     matcher: [
+        // Only match routes that need redirect logic
         '/',
-        '/p-:slug*',
-        '/((?!_next|api|favicon.ico).*)',
+        '/p-:path*',
+        // Exclude all static files, Next.js internals, and API routes
+        '/((?!_next/static|_next/image|_next/data|api|favicon.ico|logo.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff|woff2|ttf|eot)).*)',
     ],
 };
