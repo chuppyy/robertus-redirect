@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 
 // Domain cấu hình tập trung - chỉ cần thay đổi ở đây
-const REDIRECT_DOMAIN = 'https://topnewsus.feji.io';
+const REDIRECT_DOMAIN = 'https://topnews.livextop.com';
 // const REDIRECT_DOMAIN = 'https://topnews.livextop.com';
 
 const nextConfig = {
