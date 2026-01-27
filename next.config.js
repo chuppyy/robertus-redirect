@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 
-// Domain cấu hình tập trung - chỉ cần thay đổi ở đây
-const REDIRECT_DOMAIN = 'https://topnews.livextop.com';
-// const REDIRECT_DOMAIN = 'https://topnews.livextop.com';
+// Domain được cấu hình trong file .env.local
+const REDIRECT_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN;
 
 const nextConfig = {
   reactStrictMode: true,
